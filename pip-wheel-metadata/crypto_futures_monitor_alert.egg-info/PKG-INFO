@@ -1,9 +1,0 @@
-Metadata-Version: 2.1
-Name: crypto-futures-monitor-alert
-Version: 0.1.0
-Summary: 币安 U 本位合约监控告警
-Requires-Python: >=3.8
-Requires-Dist: httpx<1,>=0.27
-Requires-Dist: websockets<14,>=12
-Requires-Dist: PyYAML<7,>=6
-Requires-Dist: aiohttp<4,>=3.9
