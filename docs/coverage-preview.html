@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>监控覆盖面示意图（浏览器预览）</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: "neutral",
+      securityLevel: "loose",
+      flowchart: { htmlLabels: true, curve: "basis" },
+    });
+  </script>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 1.25rem 1rem 3rem;
+      line-height: 1.55;
+      color: #1a1a1a;
+      background: #fafafa;
+    }
+    h1 {
+      font-size: 1.35rem;
+      margin-top: 0;
+    }
+    h2 {
+      font-size: 1.1rem;
+      margin-top: 2rem;
+      padding-bottom: 0.35rem;
+      border-bottom: 1px solid #ddd;
+    }
+    .mermaid {
+      background: #fff;
+      border: 1px solid #e5e5e5;
+      border-radius: 8px;
+      padding: 1rem;
+      margin: 1rem 0;
+      overflow-x: auto;
+    }
+    pre.ascii {
+      background: #fff;
+      border: 1px solid #e5e5e5;
+      border-radius: 8px;
+      padding: 1rem;
+      overflow-x: auto;
+      font-size: 0.8rem;
+      line-height: 1.35;
+    }
+  </style>
+</head>
+<body>
+  <h1>合约监控告警 — 覆盖面示意图</h1>
+
+  <h2>图 1：三层覆盖</h2>
+  <div class="mermaid">
+flowchart TB
+    subgraph L1["数据层"]
+        U[("全市场合约\n行情 / OI / 市值等")]
+    end
+
+    subgraph L2["观察列表（自动维护）"]
+        R1["规则 A：7 日 OI 涨幅榜\n→ 取前 15 入列"]
+        R2["规则 B：持仓价值÷市值\n→ 比值 > 0.8 入列"]
+        WL[("观察列表\n入列标的默认全监控")]
+    end
+
+    subgraph L3a["大盘动能（独立标的池）"]
+        P["标的池：BTC / ETH / XAU / CL…\n（可配置增减）"]
+        M["1m 成交量\n相对基线 20～50 倍"]
+    end
+
+    subgraph L3b["标的级异动（默认：观察列表 ∩ 非大盘池）"]
+        A1["爆仓 > 100k"]
+        A2["OI 突破入列以来最高点"]
+        A3["OI 5m·15m 短时 +10%～20%"]
+        A4["成交量 5m·15m\n相对基线 +100% 以上"]
+    end
+
+    subgraph L4["输出"]
+        OUT["告警推送\n（字段 + 冷却去重）"]
+    end
+
+    U --> R1
+    U --> R2
+    R1 --> WL
+    R2 --> WL
+    U --> P
+    P --> M
+    M --> OUT
+    WL --> A1
+    WL --> A2
+    WL --> A3
+    WL --> A4
+    A1 --> OUT
+    A2 --> OUT
+    A3 --> OUT
+    A4 --> OUT
+  </div>
+
+  <h2>图 2：时间周期覆盖</h2>
+  <div class="mermaid">
+flowchart LR
+    subgraph K["周期"]
+        k1["1m"]
+        k5["5m"]
+        k15["15m"]
+    end
+
+    subgraph R["对应规则"]
+        k1 --> m["大盘：成交量倍数"]
+        k5 --> o["OI 短时涨幅\n成交量短时涨幅"]
+        k15 --> o
+    end
+
+    style k1 fill:#e3f2fd
+    style k5 fill:#fff3e0
+    style k15 fill:#fff3e0
+    style m fill:#e3f2fd
+    style o fill:#fff3e0
+  </div>
+
+  <h2>图 3：集合关系</h2>
+  <div class="mermaid">
+flowchart TB
+    U2[("全市场合约集合 U")]
+    M2["大盘动能池 M ⊂ U\n（少而固定 + 可扩）"]
+    W2["观察列表 W ⊂ U\n（规则 A、B 从全市场划入）"]
+    D2["标的级规则默认作用域\nW − M（差集）\n可配置为全体 W"]
+    VM2["大盘：仅对 M 内标的\n做 1m 成交量规则"]
+    VA2["标的：仅对 W−M\n做爆仓 / OI / 成交量规则"]
+
+    U2 --> M2
+    U2 --> W2
+    W2 --> D2
+    M2 --> VM2
+    D2 --> VA2
+  </div>
+
+  <h2>图 4：思维导图</h2>
+  <p style="color:#666;font-size:0.9rem">若下图空白或报错，多为 mindmap 语法版本问题；可忽略，以上图 1～3 已覆盖主要逻辑。</p>
+  <div class="mermaid">
+mindmap
+  root((合约监控告警))
+    观察列表入列
+      7日OI涨幅 Top15
+      持仓价值比市值 大于 0.8
+    大盘动能
+      固定加可扩标的池
+      1m成交量放大20至50倍
+    观察列表标的侧
+      爆仓大于100k
+      OI入列后新高
+      OI 5m与15m 10至20percent
+      成交量 5m与15m 翻倍以上
+    输出
+      推送与冷却
+  </div>
+
+  <h2>图 5：ASCII 备用</h2>
+  <pre class="ascii">+------------------- 全市场 U -------------------+
+|  +-----------+    +-------------------------+  |
+|  | 大盘池 M  |    | 其余合约（可进观察列表）   |  |
+|  | BTC,ETH… |    | 规则A Top15  规则B 比值&gt;0.8 |
+|  +-----------+    +-----------W-------------+  |
++-------------------|--------------------------+
+                    |
+         +----------+----------+
+         v                     v
+   [1m 量 20~50x]        [W \ M 上四规则]
+   -&gt; 大盘告警            -&gt; 标的告警
+         \                   /
+          v                 v
+            [ 告警推送 + 冷却 ]</pre>
+
+  <p style="margin-top:2rem;color:#888;font-size:0.85rem">与 docs/监控覆盖面示意图.md 同步；可直接用浏览器打印为 PDF。</p>
+</body>
+</html>

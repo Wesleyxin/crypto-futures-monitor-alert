@@ -1,0 +1,50 @@
+# 币安 U 本位合约监控 — 默认配置
+exchange: binance
+marketType: usdt-m
+
+binance:
+  # REST 地址
+  restBaseUrl: "http://101.32.128.4:8090"
+
+watchlist:
+  oi7d:
+    topN: 10
+  oi1dUp:
+    minPct: 0.30
+  price1dUp:
+    minPct: 0.30
+  oi1dDown:
+    maxPct: -0.50
+  retainDays: 10
+  scanIntervalSec: 300
+  manualStorePath: ".monitor_manual_watchlist.json"
+
+alert:
+  cooldownSec: 900
+  webhookUrl: ""
+  # 企业微信群机器人 Webhook（须填此项才会按企业微信格式推送）
+  wecomWebhookUrl: "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=aa95a5a8-59e7-4197-829c-aed435f315c3"
+  # Discord Webhook（Embed 卡片格式推送）
+  discordWebhookUrl: ""
+
+# 内置可视化看板（需要时再开启）
+ui:
+  enabled: true
+  host: "0.0.0.0"
+  port: 8767
+  # 非空则要求页面与 /api/* 携带相同 token：浏览器访问 http://IP:8767/?token=你的密钥
+  authToken: "sDMFCsFLeIFv836ctGclQCJLL_1CiEjAHw6mq5XGBms"
+  recentAlertMax: 300
+  ruleToggleStorePath: ".monitor_rule_toggles.json"
+
+# 告警触发时间、日志 asctime 为 UTC+8；观察列表入列时间仍为 UTC（ISO）
+time:
+  standard: UTC
+
+# CoinGecko 免费接口用于「持仓价值/市值」；失败时仅跳过该入列原因
+coingecko:
+  enabled: true
+  baseUrl: "https://api.coingecko.com/api/v3"
+
+# 标的级规则 REST 轮询间隔（秒）
+altPollIntervalSec: 45

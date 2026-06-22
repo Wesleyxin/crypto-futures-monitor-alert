@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>监控告警系统目标架构方案</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --panel: #17202b;
+      --panel-2: #1f2a36;
+      --text: #e6edf3;
+      --muted: #93a4b8;
+      --border: #304050;
+      --accent: #4c9aff;
+      --success: #36c78b;
+      --warn: #ffb020;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+    .page {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 32px 20px 56px;
+    }
+    h1, h2, h3, p { margin: 0; }
+    h1 { font-size: 30px; margin-bottom: 10px; }
+    h2 { font-size: 22px; margin: 30px 0 14px; }
+    h3 { font-size: 16px; margin-bottom: 8px; }
+    p.lead { color: var(--muted); max-width: 900px; }
+    .badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 12px;
+      background: rgba(255,255,255,0.02);
+    }
+    .badge.primary {
+      border-color: rgba(76,154,255,0.45);
+      color: #cfe4ff;
+      background: rgba(76,154,255,0.14);
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin: 22px 0;
+    }
+    .stat {
+      border: 1px solid var(--border);
+      background: var(--panel);
+      border-radius: 12px;
+      padding: 14px 16px;
+    }
+    .stat .value {
+      font-size: 26px;
+      font-weight: 700;
+    }
+    .stat .label {
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+    .callout {
+      border: 1px solid rgba(255,176,32,0.4);
+      background: rgba(255,176,32,0.08);
+      border-radius: 12px;
+      padding: 14px 16px;
+      margin-top: 8px;
+    }
+    .callout strong { color: #ffd37a; }
+    .diagram-wrap {
+      margin-top: 14px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: var(--panel);
+      padding: 12px;
+      overflow-x: auto;
+    }
+    svg {
+      width: 100%;
+      min-width: 1100px;
+      height: auto;
+      display: block;
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 14px;
+      margin-top: 14px;
+    }
+    .card {
+      border: 1px solid var(--border);
+      background: var(--panel);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .card .hd {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+      color: var(--muted);
+      background: rgba(255,255,255,0.02);
+    }
+    .card .bd {
+      padding: 14px;
+    }
+    ul {
+      margin: 0;
+      padding-left: 18px;
+    }
+    li + li {
+      margin-top: 8px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+      overflow: hidden;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--panel);
+    }
+    th, td {
+      text-align: left;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+      font-size: 14px;
+    }
+    th {
+      font-size: 12px;
+      color: var(--muted);
+      background: rgba(255,255,255,0.03);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    tr:last-child td { border-bottom: none; }
+    code {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 6px;
+      padding: 1px 6px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.92em;
+    }
+    .footer-note {
+      margin-top: 26px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="badges">
+      <span class="badge primary">目标架构</span>
+      <span class="badge">数据库驱动</span>
+      <span class="badge">事件驱动</span>
+      <span class="badge">可替换推送</span>
+    </div>
+
+    <h1>监控告警系统目标架构方案</h1>
+    <p class="lead">
+      这版方案重点回答三个问题：模块怎么拆、数据怎么流、为什么这样拆比当前单进程内存耦合更稳。
+    </p>
+
+    <div class="stats">
+      <div class="stat">
+        <div class="value">4</div>
+        <div class="label">核心执行层</div>
+      </div>
+      <div class="stat">
+        <div class="value">2</div>
+        <div class="label">基础设施层</div>
+      </div>
+      <div class="stat">
+        <div class="value">0</div>
+        <div class="label">Recent Buffer 依赖</div>
+      </div>
+      <div class="stat">
+        <div class="value">1</div>
+        <div class="label">推荐主存储</div>
+      </div>
+    </div>
+
+    <div class="callout">
+      <strong>核心原则：</strong>
+      不追求“脚本彼此完全无关系”，而是追求“模块之间不共享进程内状态，只共享数据库事实和事件契约”。
+    </div>
+
+    <h2>总体结构图</h2>
+    <div class="diagram-wrap">
+      <svg viewBox="0 0 1180 680" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <style>
+            .t1 { font: 600 13px sans-serif; fill: #e6edf3; }
+            .t2 { font: 11px sans-serif; fill: #93a4b8; }
+            .tl { font: 10px sans-serif; fill: #93a4b8; }
+            .box { fill: #1f2a36; stroke: #304050; rx: 12; }
+            .box2 { fill: rgba(76,154,255,0.14); stroke: #4c9aff; rx: 12; }
+            .ui { fill: #202b37; stroke: #304050; rx: 12; }
+            .line { stroke: #506275; stroke-width: 1.5; }
+          </style>
+        </defs>
+
+        <text x="18" y="24" class="tl">目标：筛选、规则、推送、展示彻底分层；以数据库和消息总线作为边界</text>
+
+        <rect x="20" y="60" width="210" height="96" class="box" />
+        <text x="34" y="84" class="t1">市场采集层</text>
+        <text x="34" y="106" class="t2">价格 / K线 / OI</text>
+        <text x="34" y="122" class="t2">交易所元数据标准化</text>
+        <text x="34" y="138" class="t2">只负责采集与落库</text>
+
+        <rect x="20" y="208" width="210" height="96" class="box" />
+        <text x="34" y="232" class="t1">观察列表筛选层</text>
+        <text x="34" y="254" class="t2">定时扫描</text>
+        <text x="34" y="270" class="t2">生成 watchlist 快照</text>
+        <text x="34" y="286" class="t2">发布 watchlist.updated</text>
+
+        <rect x="20" y="356" width="210" height="96" class="box" />
+        <text x="34" y="380" class="t1">规则检测层</text>
+        <text x="34" y="402" class="t2">读取观察列表 + 行情</text>
+        <text x="34" y="418" class="t2">计算规则命中</text>
+        <text x="34" y="434" class="t2">发布 alert.created</text>
+
+        <rect x="20" y="504" width="210" height="96" class="box" />
+        <text x="34" y="528" class="t1">推送执行层</text>
+        <text x="34" y="550" class="t2">消费告警事件</text>
+        <text x="34" y="566" class="t2">发送 Discord / 企微</text>
+        <text x="34" y="582" class="t2">记录 delivery_attempt</text>
+
+        <rect x="330" y="120" width="250" height="116" class="box2" />
+        <text x="344" y="144" class="t1" fill="#cfe4ff">消息中间件</text>
+        <text x="344" y="166" class="t2">RabbitMQ / Redis Streams</text>
+        <text x="344" y="182" class="t2">watchlist.updated</text>
+        <text x="344" y="198" class="t2">alert.created / delivery.result</text>
+
+        <rect x="330" y="358" width="250" height="132" class="box2" />
+        <text x="344" y="382" class="t1" fill="#cfe4ff">主数据库</text>
+        <text x="344" y="404" class="t2">PostgreSQL</text>
+        <text x="344" y="420" class="t2">watchlist_snapshot</text>
+        <text x="344" y="436" class="t2">alert_event / delivery_attempt</text>
+        <text x="344" y="452" class="t2">面板查询事实源</text>
+
+        <rect x="690" y="60" width="210" height="96" class="box" />
+        <text x="704" y="84" class="t1">watchlist-writer</text>
+        <text x="704" y="106" class="t2">消费筛选结果</text>
+        <text x="704" y="122" class="t2">维护当前观察列表</text>
+        <text x="704" y="138" class="t2">写历史变更</text>
+
+        <rect x="690" y="208" width="210" height="96" class="box" />
+        <text x="704" y="232" class="t1">rule-engine</text>
+        <text x="704" y="254" class="t2">只关心规则判定</text>
+        <text x="704" y="270" class="t2">不直接发通知</text>
+        <text x="704" y="286" class="t2">结果写 alert_event</text>
+
+        <rect x="690" y="356" width="210" height="96" class="box" />
+        <text x="704" y="380" class="t1">notification-worker</text>
+        <text x="704" y="402" class="t2">重试 / 限流 / 失败记录</text>
+        <text x="704" y="418" class="t2">通道可替换</text>
+        <text x="704" y="434" class="t2">与页面解耦</text>
+
+        <rect x="690" y="504" width="210" height="96" class="box" />
+        <text x="704" y="528" class="t1">query-api</text>
+        <text x="704" y="550" class="t2">只读聚合接口</text>
+        <text x="704" y="566" class="t2">提供最近告警 / 推送状态</text>
+        <text x="704" y="582" class="t2">替代内存缓冲区</text>
+
+        <rect x="970" y="132" width="180" height="96" class="ui" />
+        <text x="984" y="156" class="t1">Web 面板</text>
+        <text x="984" y="178" class="t2">只读 query-api</text>
+        <text x="984" y="194" class="t2">不直接读取内存</text>
+        <text x="984" y="210" class="t2">声音提示基于事实数据</text>
+
+        <rect x="970" y="388" width="180" height="96" class="ui" />
+        <text x="984" y="412" class="t1">外部推送通道</text>
+        <text x="984" y="434" class="t2">Discord</text>
+        <text x="984" y="450" class="t2">WeCom / Generic Webhook</text>
+
+        <line x1="230" y1="108" x2="330" y2="176" class="line" />
+        <line x1="230" y1="256" x2="330" y2="176" class="line" />
+        <line x1="230" y1="404" x2="330" y2="176" class="line" />
+        <line x1="230" y1="552" x2="330" y2="424" class="line" />
+
+        <line x1="455" y1="236" x2="455" y2="358" class="line" />
+
+        <line x1="580" y1="176" x2="690" y2="108" class="line" />
+        <line x1="580" y1="176" x2="690" y2="256" class="line" />
+        <line x1="580" y1="176" x2="690" y2="404" class="line" />
+        <line x1="580" y1="424" x2="690" y2="552" class="line" />
+
+        <line x1="900" y1="552" x2="970" y2="180" class="line" />
+        <line x1="900" y1="404" x2="970" y2="436" class="line" />
+        <line x1="900" y1="108" x2="580" y2="424" class="line" />
+        <line x1="900" y1="256" x2="580" y2="424" class="line" />
+        <line x1="900" y1="404" x2="580" y2="424" class="line" />
+
+        <text x="260" y="132" class="tl">行情事件</text>
+        <text x="258" y="228" class="tl">筛选结果</text>
+        <text x="255" y="318" class="tl">规则事件</text>
+        <text x="255" y="498" class="tl">发送结果</text>
+        <text x="463" y="304" class="tl">落库</text>
+        <text x="618" y="132" class="tl">消费</text>
+        <text x="618" y="226" class="tl">消费</text>
+        <text x="617" y="322" class="tl">消费</text>
+        <text x="620" y="486" class="tl">查询</text>
+      </svg>
+    </div>
+
+    <h2>为什么这样拆</h2>
+    <div class="grid-2">
+      <div class="card">
+        <div class="hd">保留的能力</div>
+        <div class="bd">
+          <ul>
+            <li>观察列表仍然可以独立筛选，只是不再直接驱动页面内存状态。</li>
+            <li>规则引擎仍然专注于命中逻辑，不承担外部推送失败的复杂度。</li>
+            <li>Web 面板仍然展示最近告警，但数据来源改为数据库事实表。</li>
+          </ul>
+        </div>
+      </div>
+      <div class="card">
+        <div class="hd">当前痛点对应解法</div>
+        <div class="bd">
+          <ul>
+            <li>“响了但没看到新增”这类问题，会从前端内存逻辑变成数据库可追踪事实。</li>
+            <li>“告警触发”和“推送成功”拆成两张事实表，状态边界清晰。</li>
+            <li>服务重启后状态不丢，排障不再依赖单次进程日志。</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <h2>模块职责表</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>模块</th>
+          <th>输入</th>
+          <th>输出</th>
+          <th>不负责什么</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>market-ingestor</code></td>
+          <td>交易所 API</td>
+          <td>行情快照 / K线 / OI</td>
+          <td>不负责规则、不负责推送</td>
+        </tr>
+        <tr>
+          <td><code>watchlist-selector</code></td>
+          <td>行情快照</td>
+          <td><code>watchlist_snapshot</code> + <code>watchlist.updated</code></td>
+          <td>不负责页面、不负责通知</td>
+        </tr>
+        <tr>
+          <td><code>rule-engine</code></td>
+          <td>观察列表 + 行情</td>
+          <td><code>alert_event</code> + <code>alert.created</code></td>
+          <td>不负责通道发送</td>
+        </tr>
+        <tr>
+          <td><code>notification-worker</code></td>
+          <td><code>alert.created</code></td>
+          <td><code>delivery_attempt</code> + <code>delivery.result</code></td>
+          <td>不负责规则计算</td>
+        </tr>
+        <tr>
+          <td><code>query-api</code></td>
+          <td>数据库</td>
+          <td>面板查询结果</td>
+          <td>不直接消费交易所数据</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>核心存储设计</h2>
+    <div class="grid-2">
+      <div class="card">
+        <div class="hd">主数据库</div>
+        <div class="bd">
+          <ul>
+            <li><code>watchlist_snapshot</code>：当前观察列表状态</li>
+            <li><code>watchlist_reason_history</code>：原因变化历史</li>
+            <li><code>alert_event</code>：规则命中事实</li>
+            <li><code>delivery_attempt</code>：每个通道每次发送尝试</li>
+            <li><code>instrument_snapshot</code>：最近行情快照</li>
+          </ul>
+        </div>
+      </div>
+      <div class="card">
+        <div class="hd">消息中间件</div>
+        <div class="bd">
+          <ul>
+            <li><code>watchlist.updated</code>：观察列表变化事件</li>
+            <li><code>alert.created</code>：新告警事件</li>
+            <li><code>delivery.result</code>：推送结果事件</li>
+            <li>初期建议 <code>RabbitMQ</code> 或 <code>Redis Streams</code>，不急着上 <code>Kafka</code>。</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <h2>推荐技术选型</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>层</th>
+          <th>推荐</th>
+          <th>理由</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>主数据库</td>
+          <td>PostgreSQL</td>
+          <td>结构化强、事务可靠、适合当前体量</td>
+        </tr>
+        <tr>
+          <td>消息队列</td>
+          <td>RabbitMQ / Redis Streams</td>
+          <td>先低复杂度实现异步解耦</td>
+        </tr>
+        <tr>
+          <td>API</td>
+          <td>FastAPI</td>
+          <td>管理接口和只读查询都适合</td>
+        </tr>
+        <tr>
+          <td>Worker</td>
+          <td>Python 独立进程</td>
+          <td>与现有技术栈连续</td>
+        </tr>
+        <tr>
+          <td>调度</td>
+          <td>cron / APScheduler</td>
+          <td>先满足定时任务触发</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>迁移阶段图</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>阶段</th>
+          <th>做什么</th>
+          <th>结果</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Phase 1</td>
+          <td>把观察列表、告警、推送记录先落库</td>
+          <td>先摆脱内存关键状态</td>
+        </tr>
+        <tr>
+          <td>Phase 2</td>
+          <td>拆 <code>query-api</code> 和 <code>notification-worker</code></td>
+          <td>页面查询与推送执行解耦</td>
+        </tr>
+        <tr>
+          <td>Phase 3</td>
+          <td>拆 <code>watchlist-selector</code> 和 <code>rule-engine</code></td>
+          <td>业务职责边界清晰</td>
+        </tr>
+        <tr>
+          <td>Phase 4</td>
+          <td>按体量评估 Kafka / 时序库</td>
+          <td>只在真正需要时升级基础设施</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p class="footer-note">
+      一句话结论：最推荐的落地路线不是一步到位重型微服务，而是 <code>PostgreSQL + 轻量消息中间件 + 独立 worker + 只读 query-api</code> 的渐进式事件驱动架构。
+    </p>
+  </div>
+</body>
+</html>
