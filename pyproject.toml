@@ -9,7 +9,6 @@ description = "币安 U 本位合约监控告警"
 requires-python = ">=3.8"
 dependencies = [
   "httpx>=0.27,<1",
-  "websockets>=12,<14",
   "PyYAML>=6,<7",
   "aiohttp>=3.9,<4",
 ]

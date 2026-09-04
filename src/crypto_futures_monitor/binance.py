@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-import asyncio
-import json
 import logging
-from typing import Any, AsyncIterator, Optional
+from typing import Any, Optional
 
 import httpx
 
@@ -29,10 +27,6 @@ class BinanceFuturesClient:
         await self._get("/fapi/v1/ping")
         return True
 
-    async def server_time(self) -> int:
-        j = await self._get("/fapi/v1/time")
-        return int(j["serverTime"])
-
     async def exchange_info(self) -> dict[str, Any]:
         return await self._get("/fapi/v1/exchangeInfo")
 
@@ -54,40 +48,3 @@ class BinanceFuturesClient:
 
     async def mark_price(self, symbol: str) -> dict[str, Any]:
         return await self._get("/fapi/v1/premiumIndex", {"symbol": symbol})
-
-
-def futures_ws_stream_url(ws_base: str, streams: list[str]) -> str:
-    base = ws_base.rstrip("/")
-    q = "/".join(streams)
-    if base.endswith("/ws"):
-        return f"{base}/stream?streams={q}"
-    return f"{base}/stream?streams={q}"
-
-
-async def ws_json_messages(ws_url: str, stop: asyncio.Event) -> AsyncIterator[dict[str, Any]]:
-    import websockets
-
-    backoff = 1.0
-    while not stop.is_set():
-        try:
-            async with websockets.connect(ws_url, ping_interval=20, ping_timeout=60) as ws:
-                backoff = 1.0
-                while not stop.is_set():
-                    try:
-                        raw = await asyncio.wait_for(ws.recv(), timeout=120)
-                    except asyncio.TimeoutError:
-                        continue
-                    try:
-                        msg = json.loads(raw)
-                    except json.JSONDecodeError:
-                        continue
-                    if isinstance(msg, dict):
-                        yield msg
-        except asyncio.CancelledError:
-            raise
-        except Exception as e:
-            if stop.is_set():
-                break
-            log.warning("WebSocket 断开，%s 秒后重连: %s", backoff, e)
-            await asyncio.sleep(backoff)
-            backoff = min(backoff * 2, 60.0)

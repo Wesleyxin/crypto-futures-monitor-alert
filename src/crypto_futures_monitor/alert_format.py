@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from datetime import datetime, timezone
 from typing import Any
 
@@ -37,20 +36,6 @@ def _pct(x: Any, digits: int = 2) -> str:
     return f"{v * 100:.{digits}f}%"
 
 
-# 推送里与「规则数值」并列展示的快照字段，避免在「其它」规则里重复打印一大段 JSON
-_SNAPSHOT_KEYS = frozenset(
-    {
-        "open_interest_value_usdt",
-        "market_cap_usdt",
-        "open_interest_quantity",
-        "mark_price_usdt",
-        "oi_value_to_mcap_ratio",
-        "bar_close_ms",
-        "oi_hist_boundary_ms",
-    }
-)
-
-
 def _money_usd(x: Any) -> str:
     try:
         v = float(x)
@@ -75,74 +60,6 @@ def _num(x: Any, digits: int = 4) -> str:
     if abs(v - int(v)) < 1e-9:
         return f"{int(v):,}"
     return f"{v:,.{digits}f}".rstrip("0").rstrip(".")
-
-
-def format_values_cn(rule_type: str, values: dict[str, Any]) -> list[str]:
-    """将数值字典格式化为中文多行说明。"""
-    lines: list[str] = []
-    v = values or {}
-
-    if rule_type == "price_oi_since_watchlist_high":
-        lines.append(f"- 当前价格：**{_num(v.get('price'), 4)}**")
-        lines.append(f"- 此前入列后价格高点：{_num(v.get('prev_max_price'), 4)}")
-        lines.append(f"- 当前持仓量 OI：**{_num(v.get('oi'), 4)}**")
-        lines.append(f"- 此前入列后 OI 高点：{_num(v.get('prev_max_oi'), 4)}")
-    elif rule_type == "price_oi_rolling_7d_high":
-        lines.append(f"- 当前价格：**{_num(v.get('price'), 4)}**")
-        lines.append(f"- 此前7日价格高点：{_num(v.get('prev_price_7d_high'), 4)}")
-        lines.append(f"- 当前持仓量 OI：**{_num(v.get('oi'), 4)}**")
-        lines.append(f"- 此前7日 OI 高点：{_num(v.get('prev_oi_7d_high'), 4)}")
-    elif rule_type == "volume_spike_10m":
-        lines.append(f"- 当前10m成交量：**{_num(v.get('current_volume_10m'), 6)}**")
-        lines.append(f"- 前10m成交量：{_num(v.get('previous_volume_10m'), 6)}")
-        lines.append(f"- 10m成交量涨幅：**{_pct(v.get('volume_chg_pct'))}**")
-    else:
-        rest = {k: val for k, val in v.items() if k not in _SNAPSHOT_KEYS}
-        if not rest:
-            lines.append("- （无其它扩展字段）")
-        else:
-            try:
-                raw = json.dumps(rest, ensure_ascii=False, indent=2)
-            except (TypeError, ValueError):
-                raw = str(rest)
-            lines.append("```\n" + raw[:800] + ("\n```" if len(raw) <= 800 else "\n…\n```"))
-    return lines
-
-
-def format_market_snapshot_lines(values: dict[str, Any]) -> list[str]:
-    """持仓量、标记价、持仓名义价值、市值、比值（推送/日志用中文多行）。"""
-    lines: list[str] = []
-    v = values or {}
-    qty = v.get("open_interest_quantity")
-    if qty is not None:
-        lines.append(f"- **持仓量（OI）：** {_num(qty, 6)}")
-    else:
-        lines.append("- **持仓量（OI）：** 本次未能从交易所拉取")
-    mark = v.get("mark_price_usdt")
-    if mark is not None:
-        lines.append(f"- **标记价格（USDT）：** {_num(mark, 4)}")
-    else:
-        lines.append("- **标记价格（USDT）：** —")
-    oi_val = v.get("open_interest_value_usdt")
-    if oi_val is not None:
-        lines.append(f"- **持仓名义价值（OI×标记价）：** {_money_usd(oi_val)} USDT")
-    else:
-        lines.append("- **持仓名义价值：** 本次未能从交易所拉取")
-    mcap = v.get("market_cap_usdt")
-    if mcap is not None and float(mcap) > 0:
-        lines.append(f"- **代币市值（参考 CoinGecko，与入列逻辑同源）：** {_money_usd(mcap)} USD")
-    else:
-        lines.append("- **代币市值：** 暂无或未命中映射（需开启 CoinGecko 且完成至少一次观察列表扫描以刷新缓存）")
-    ratio = v.get("oi_value_to_mcap_ratio")
-    if ratio is not None and isinstance(ratio, (int, float)) and mcap is not None and float(mcap) > 0:
-        lines.append(f"- **持仓名义价值 / 市值：** {float(ratio):.4f}")
-    return lines
-
-
-def _watchlist_entry_line(event: AlertEvent) -> str:
-    if event.watchlist_entry_at is None:
-        return "（不适用：大盘动能或非观察列表标的）"
-    return format_beijing_time(event.watchlist_entry_at)
 
 
 def _watchlist_reasons_line(event: AlertEvent) -> str:

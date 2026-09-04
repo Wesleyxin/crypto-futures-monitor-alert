@@ -36,7 +36,7 @@ class AlertEvent:
     values: dict
     watchlist_reasons: list[str]
     message: str
-    #: 首次进入观察列表的时间（UTC，与 WatchlistEntry.entry_time 同源）；大盘等非观察列表告警为 None
+    #: 首次进入观察列表的时间（UTC，与 WatchlistEntry.entry_time 同源）
     watchlist_entry_at: Optional[datetime] = None
 
 

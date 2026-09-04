@@ -45,10 +45,8 @@ def load_config(path: Optional[Union[str, Path]] = None) -> dict[str, Any]:
     with cfg_path.open("r", encoding="utf-8") as f:
         raw = yaml.safe_load(f) or {}
     defaults: dict[str, Any] = {
-        "exchange": "binance",
-        "marketType": "usdt-m",
         "binance": {
-            "restBaseUrl": "http://101.32.128.4:8090",
+            "restBaseUrl": "https://fapi.binance.com",
         },
         "watchlist": {
             "oi7d": {"topN": 10},
@@ -68,7 +66,6 @@ def load_config(path: Optional[Union[str, Path]] = None) -> dict[str, Any]:
             "recentAlertMax": 300,
             "ruleToggleStorePath": ".monitor_rule_toggles.json",
         },
-        "time": {"standard": "UTC"},
         "coingecko": {
             "enabled": True,
             "baseUrl": "https://api.coingecko.com/api/v3",

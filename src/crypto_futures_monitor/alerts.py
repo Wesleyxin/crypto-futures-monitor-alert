@@ -45,7 +45,6 @@ class AlertManager:
         self._mcap = mcap_cache
         self._rule_toggles = rule_toggle_store
         self._last: dict[tuple[str, str], float] = {}
-        self._last_daily: dict[tuple[str, str], str] = {}
         self._emit_count_daily: dict[tuple[str, str], int] = {}
         self._client: Optional[httpx.AsyncClient] = None
         if self._webhook or self._wecom or self._discord:
@@ -62,16 +61,6 @@ class AlertManager:
             cooldown_sec = max(0, int(vals.get("_cooldown_sec_override", self._cooldown)))
         except (TypeError, ValueError):
             cooldown_sec = self._cooldown
-        if bool(vals.get("_once_per_day")):
-            key = (symbol, rule_type)
-            day_key = self._day_key(event.triggered_at)
-            last_day = self._last_daily.get(key)
-            if last_day == day_key:
-                log.debug("按日去重跳过 %s %s", symbol, rule_type)
-                return False
-            self._last_daily[key] = day_key
-        if bool(vals.get("_skip_cooldown")):
-            return True
         if cooldown_sec <= 0:
             return True
         key = (symbol, rule_type)

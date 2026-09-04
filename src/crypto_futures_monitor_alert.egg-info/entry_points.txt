@@ -1,2 +1,0 @@
-[console_scripts]
-futures-monitor = crypto_futures_monitor.main:main

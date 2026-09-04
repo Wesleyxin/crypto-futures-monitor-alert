@@ -1,0 +1,36 @@
+# 币安 U 本位合约监控 — 配置示例
+binance:
+  restBaseUrl: "https://fapi.binance.com"
+
+watchlist:
+  oi7d:
+    topN: 10
+  oi1dUp:
+    minPct: 0.30
+  price1dUp:
+    minPct: 0.30
+  oi1dDown:
+    maxPct: -0.50
+  retainDays: 10
+  scanIntervalSec: 300
+  manualStorePath: ".monitor_manual_watchlist.json"
+
+alert:
+  cooldownSec: 900
+  webhookUrl: ""
+  wecomWebhookUrl: ""
+  discordWebhookUrl: ""
+
+ui:
+  enabled: true
+  host: "0.0.0.0"
+  port: 8767
+  authToken: "请替换为随机安全令牌"
+  recentAlertMax: 300
+  ruleToggleStorePath: ".monitor_rule_toggles.json"
+
+coingecko:
+  enabled: true
+  baseUrl: "https://api.coingecko.com/api/v3"
+
+altPollIntervalSec: 45

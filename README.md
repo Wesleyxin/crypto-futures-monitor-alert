@@ -77,6 +77,14 @@ pip install -e .
 
 - `config.yaml`
 
+首次运行时从示例创建本地配置：
+
+```bash
+cp config.example.yaml config.yaml
+```
+
+`config.yaml` 包含 Webhook 和访问令牌，不应提交到 Git。
+
 当前默认关键配置如下：
 
 - `binance.restBaseUrl`
@@ -494,27 +502,16 @@ curl "http://127.0.0.1:8767/api/health"
 
 ```text
 crypto-futures-monitor-alert/
-├── config.yaml
+├── config.example.yaml
 ├── requirements.txt
 ├── run.sh
 ├── README.md
-├── docs/
-│   └── 需求说明.md
 └── src/crypto_futures_monitor/
     ├── main.py
     ├── watchlist.py
     ├── alt_monitor.py
+    ├── rules/
     ├── alerts.py
     ├── dashboard.py
-    ├── alert_format.py
-    ├── rule_toggles.py
-    ├── coingecko.py
-    ├── binance.py
-    └── ...
+    └── binance.py
 ```
-
-## 说明
-
-- `docs/需求说明.md` 是早期需求文档，不等于当前实际运行逻辑。
-- 当前仓库以“轻量化后的实现”为准。
-- 如果你后续再新增规则，建议同步更新本 README。
